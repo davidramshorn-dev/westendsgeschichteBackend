@@ -1,0 +1,172 @@
+Kurzüberblick
+
+Zweck: Backend (Spring Boot) + Frontend (statisch) für „Westendsgeschichte“; PostgreSQL‑DB (Supabase) als persistenter Speicher; Deployment auf Render.
+Status: Backend läuft auf Render; DB ausgelagert zu Supabase; Test‑Endpoints vorhanden.
+1. (Sehr nützlich) Repo von Eclipse / GitHub Desktop / Terminal hochladen (Schritt‑für‑Schritt)
+
+A. In Eclipse (Git‑Integration)
+
+    Projekt in Eclipse öffnen → Rechtsklick auf Projekt → Team → Share Project… → Git auswählen → Repository anlegen oder vorhandenes auswählen.
+
+    Änderungen committen: Rechtsklick → Team → Commit… → Commit‑Message schreiben → Commit and Push (oder Commit lokal).
+
+    Falls Push nicht automatisch: Rechtsklick → Team → Remote → Push… → Remote URL (https://github.com/<user>/<repo>.git) eintragen → Username + Personal Access Token (PAT) als Passwort verwenden.
+
+    Wichtig: GitHub akzeptiert keine Passwörter mehr — erstelle einen PAT in GitHub Settings → Developer settings → Personal access tokens → repo scope. Kopiere Token, wenn Terminal nach Passwort fragt, füge Token ein.
+
+B. GitHub Desktop
+
+    Repository öffnen → Änderungen committen → Push origin.
+
+    Wenn Authentifizierungsfehler: GitHub Desktop fordert Login; melde dich mit GitHub Account an oder verwende PAT.
+
+C. Terminal (empfohlen für Kontrolle)
+bash
+
+git add .
+git commit -m "Beschreibung"
+git push origin main
+
+Wenn fatal: Authentication failed → PAT verwenden. Falls macOS Schlüsselbund alte Credentials hat: Schlüsselbundverwaltung öffnen → github.com Einträge löschen → nächster Push fragt neu.
+2. Deployment auf Render (Backend) — kurze Anleitung
+
+    Neues Web Service in Render anlegen → GitHub Repo verbinden → Branch wählen.
+
+    Build Command: ./mvnw package (oder mvn package)
+
+    Start Command: java -jar target/*.jar (oder Render automatisch)
+
+    Environment Variables setzen (siehe DB‑Konfiguration).
+
+    Logs prüfen: HikariPool, Hibernate SQL, Port‑Binding.
+
+    Häufige Fehler: CORS, falsche JDBC‑URL, fehlender PostgreSQL‑Treiber, Auth für GitHub.
+
+3. Supabase (Postgres) einrichten & Render verbinden
+
+    Supabase: neues Projekt → Region wählen → DB‑Passwort setzen.
+
+    In Supabase: Settings → Database → Connection strings → JDBC (oder Java) → JDBC‑URL kopieren.
+
+    Empfohlene Render‑Env‑Keys:
+
+        DB_URL = jdbc:postgresql://<host>:<port>/postgres?sslmode=require
+
+        DB_USERNAME = postgres.<project-ref> (wie Supabase angibt)
+
+        DB_PASSWORD = dein Supabase‑DB‑Passwort
+
+    In application.properties:
+
+properties
+
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+    Hinweis: Supabase liefert manchmal postgres://... — Spring Boot braucht jdbc:postgresql://.... Entferne user/password aus URL oder setze sie separat als Env Vars.
+
+4. application.properties — empfohlene Version
+properties
+
+spring.application.name=westendsgeschichte
+
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+server.port=${PORT:8080}
+
+5. pom.xml — notwendige Dependency
+xml
+
+<dependency>
+  <groupId>org.postgresql</groupId>
+  <artifactId>postgresql</artifactId>
+  <scope>runtime</scope>
+</dependency>
+
+Ohne diesen Treiber kann Spring Boot keine PostgreSQL‑Verbindung herstellen.
+6. CORS & API‑Zugriff
+
+    Für Frontend → Backend Cross‑Origin: entweder Controller‑level @CrossOrigin(origins = "https://dein-frontend") oder globale Konfiguration:
+
+java
+
+@Configuration
+public class CorsConfig {
+  @Bean
+  public WebMvcConfigurer corsConfigurer() {
+    return new WebMvcConfigurer() {
+      @Override
+      public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**").allowedOrigins("*").allowedMethods("GET","POST","PUT","DELETE");
+      }
+    };
+  }
+}
+
+    Sicherer: statt * die konkrete Frontend‑Domain angeben.
+
+7. Test‑Endpoints & Beispiele
+
+    Test‑Controller: GET /api/test und POST /api/test (JSON body {"id":"1","message":"..."}).
+
+    curl Beispiel:
+
+bash
+
+curl -X POST https://<dein-backend>.onrender.com/api/test \
+  -H "Content-Type: application/json" \
+  -d '{"id":"1","message":"Hallo aus Supabase!"}'
+
+    GET:
+
+bash
+
+curl https://<dein-backend>.onrender.com/api/test
+
+8. Datenmigration (Render → Supabase)
+
+    Falls Daten in Render‑Postgres existieren: pg_dump auf Render‑DB, dann psql oder pg_restore in Supabase importieren.
+
+    Alternativ: Export CSV aus Render → Import in Supabase Table Editor.
+
+9. Troubleshooting (häufige Fehler & Lösungen)
+
+    Hikari/Driver Fehler → fehlender Postgres‑Treiber oder falsche JDBC‑URL (postgresql:// statt jdbc:postgresql://).
+
+    Invalid username or token beim git push → PAT verwenden, Schlüsselbund prüfen.
+
+    CORS blocked → CORS Header fehlt → globale CORS konfigurieren.
+
+    301 Redirect → falsche URL (fehlender Slash) → https://... korrekt schreiben.
+
+10. Nützliche Befehle & Shortcuts
+
+    Git push: git push origin main
+
+    Build lokal: ./mvnw clean package
+
+    Run lokal: java -jar target/*.jar
+
+    DB‑Check (psql): psql "host=<host> port=<port> dbname=postgres user=<user> password=<pw> sslmode=require"
+
+11. Weiteres / To‑Do Ideen
+
+    Admin‑UI zum Eintragen von Orten
+
+    Kartenintegration (Leaflet/Mapbox)
+
+    Auth (Supabase Auth oder Keycloak)
+
+    Backup‑Strategie für Supabase (automatisierte Exporte)
