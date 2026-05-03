@@ -7,7 +7,7 @@ import java.util.List;
 public class LoadQuestionsService {
 private final LoadQuestionsRepository repo;
 
-    public TestEntryService(LoadQuestionsRepository repo) {
+    public LoadQuestionsService(LoadQuestionsRepository repo) {
         this.repo = repo;
     }
 
