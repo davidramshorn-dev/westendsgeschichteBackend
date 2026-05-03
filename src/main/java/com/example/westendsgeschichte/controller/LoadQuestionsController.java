@@ -1,28 +1,28 @@
 package com.example.westendsgeschichte.controller;
 
-import com.example.westendsgeschichte.model.TestEntry;
-import com.example.westendsgeschichte.service.TestEntryService;
+import com.example.westendsgeschichte.model.*;
+import com.example.westendsgeschichte.service.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/test")
+@RequestMapping("/api/question")
 public class LoadQuestionsController {
 
-    private final TestEntryService service;
+    private final LoadQuestionsService service;
 
-    public TestEntryController(TestEntryService service) {
+    public LoadQuestionsController(LoadQuestionsService service) {
         this.service = service;
     }
 
     @PostMapping
-    public TestEntry create(@RequestBody TestEntry entry) {
-        return service.save(entry);
+    public Questions create(@RequestBody Questions question) {
+        return service.save(question);
     }
 
     @GetMapping
-    public List<TestEntry> getAll() {
+    public List<Questions> getAll() {
         return service.getAll();
     }
 }
