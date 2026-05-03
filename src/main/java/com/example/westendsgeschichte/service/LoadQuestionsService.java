@@ -4,6 +4,7 @@ import com.example.westendsgeschichte.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+@Service
 public class LoadQuestionsService {
 private final LoadQuestionsRepository repo;
 
